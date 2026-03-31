@@ -11,7 +11,7 @@ export function ChessBoard() {
   const [moveHistory, setMoveHistory] = useState<BoardPosition[]>([getInitialPosition()]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
-  const [capturedPieces] = useState<{ white: ChessPiece[], black: ChessPiece[] }>({ white: [], black: [] });
+  const [capturedPieces, setCapturedPieces] = useState<{ white: ChessPiece[], black: ChessPiece[] }>({ white: [], black: [] });
 
   const boardFlipped = playerColor === 'black';
   const boardImage = boardFlipped ? '/board-black.png' : '/board-white.png';
@@ -31,6 +31,12 @@ export function ChessBoard() {
     setSelectedPiece(squareKey);
   };
 
+  const handleCapturedPieceDragStart = (_piece: ChessPiece, color: 'white' | 'black', index: number) => {
+    // Store the captured piece info for dropping
+    setDraggedPiece(`captured-${color}-${index}`);
+    setSelectedPiece(`captured-${color}-${index}`);
+  };
+
   const handleDrop = (targetSquare: string) => {
     if (!draggedPiece) return;
 
@@ -41,18 +47,60 @@ export function ChessBoard() {
       return;
     }
 
-    const newPosition = { ...position };
-    newPosition[targetSquare] = { ...newPosition[draggedPiece] };
-    newPosition[draggedPiece] = { piece: null };
+    // Check if dragging a captured piece
+    if (draggedPiece.startsWith('captured-')) {
+      const [, color, indexStr] = draggedPiece.split('-');
+      const index = parseInt(indexStr);
+      const piece = color === 'white' ? capturedPieces.white[index] : capturedPieces.black[index];
+      
+      if (piece) {
+        // Place the captured piece on the board
+        const newPosition = { ...position };
+        newPosition[targetSquare] = { piece };
+        
+        // Remove from captured pieces
+        const newCaptured = { ...capturedPieces };
+        if (color === 'white') {
+          newCaptured.white = newCaptured.white.filter((_: ChessPiece, i: number) => i !== index);
+        } else {
+          newCaptured.black = newCaptured.black.filter((_: ChessPiece, i: number) => i !== index);
+        }
+        
+        setPosition(newPosition);
+        setCapturedPieces(newCaptured);
+        
+        const newHistory = moveHistory.slice(0, historyIndex + 1);
+        newHistory.push(newPosition);
+        setMoveHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      }
+    } else {
+      // Normal piece movement
+      const newPosition = { ...position };
+      
+      // If moving to an occupied square, capture the piece
+      if (newPosition[targetSquare]?.piece) {
+        const capturedPiece = newPosition[targetSquare].piece;
+        if (capturedPiece) {
+          const newCaptured = { ...capturedPieces };
+          newCaptured[capturedPiece.color].push(capturedPiece);
+          setCapturedPieces(newCaptured);
+        }
+      }
+      
+      newPosition[targetSquare] = { ...newPosition[draggedPiece] };
+      newPosition[draggedPiece] = { piece: null };
 
-    setPosition(newPosition);
+      setPosition(newPosition);
+
+      const newHistory = moveHistory.slice(0, historyIndex + 1);
+      newHistory.push(newPosition);
+      setMoveHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+
     setDraggedPiece(null);
     setSelectedPiece(null);
-
-    const newHistory = moveHistory.slice(0, historyIndex + 1);
-    newHistory.push(newPosition);
-    setMoveHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
   };
 
   const resetBoard = () => {
@@ -168,12 +216,14 @@ export function ChessBoard() {
             <div>
               <p className="text-sm font-medium text-gray-700">By White:</p>
               <div className="flex flex-wrap gap-1 mt-1">
-                {capturedPieces.black.map((piece, index) => (
+                {capturedPieces.black.map((piece, index: number) => (
                   <img
                     key={index}
+                    draggable
+                    onDragStart={() => handleCapturedPieceDragStart(piece, 'black', index)}
                     src={getPieceSymbol(piece)}
                     alt={`${piece.color} ${piece.type}`}
-                    className="w-8 h-8"
+                    className="w-8 h-8 cursor-grab active:cursor-grabbing hover:scale-110 transition-transform"
                   />
                 ))}
               </div>
@@ -181,12 +231,14 @@ export function ChessBoard() {
             <div>
               <p className="text-sm font-medium text-gray-700">By Black:</p>
               <div className="flex flex-wrap gap-1 mt-1">
-                {capturedPieces.white.map((piece, index) => (
+                {capturedPieces.white.map((piece, index: number) => (
                   <img
                     key={index}
+                    draggable
+                    onDragStart={() => handleCapturedPieceDragStart(piece, 'white', index)}
                     src={getPieceSymbol(piece)}
                     alt={`${piece.color} ${piece.type}`}
-                    className="w-8 h-8"
+                    className="w-8 h-8 cursor-grab active:cursor-grabbing hover:scale-110 transition-transform"
                   />
                 ))}
               </div>

@@ -82,7 +82,7 @@ export function ChessBoard() {
         <p>Drag pieces to move them freely</p>
       </div>
 
-      <div className="relative" style={{ width: '512px', height: '512px' }}>
+      <div className="relative" style={{ width: '640px', height: '640px' }}>
         <img 
           src={boardImage} 
           alt="Chess Board" 
@@ -97,13 +97,13 @@ export function ChessBoard() {
             const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
             const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
             
-            const left = fileIndex * 64; // 64px per square
-            const top = rankIndex * 64;  // 64px per square
+            const left = fileIndex * 80; // 80px per square
+            const top = rankIndex * 80;  // 80px per square
             
             return (
               <div
                 key={squareKey}
-                className="absolute w-16 h-16"
+                className="absolute w-20 h-20"
                 style={{ left: `${left}px`, top: `${top}px` }}
               >
                 <ChessSquare

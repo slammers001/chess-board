@@ -25,10 +25,6 @@ export function ChessBoard() {
     setDraggedPiece(squareKey);
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
-
   const handleDrop = (targetSquare: string) => {
     if (!draggedPiece) return;
 

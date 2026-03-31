@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BoardPosition } from '../types/chess';
-import { files, ranks, getSquareKey, getInitialPosition, getSquareColor } from '../chessUtils';
+import { files, ranks, getSquareKey, getInitialPosition } from '../chessUtils';
 import { ChessSquare } from './ChessSquare';
 import { RotateCcw, FlipVertical2 } from 'lucide-react';
 
@@ -56,20 +56,6 @@ export function ChessBoard() {
     setPlayerColor(playerColor === 'white' ? 'black' : 'white');
   };
 
-  const undo = () => {
-    if (historyIndex > 0) {
-      setHistoryIndex(historyIndex - 1);
-      setPosition(moveHistory[historyIndex - 1]);
-    }
-  };
-
-  const redo = () => {
-    if (historyIndex < moveHistory.length - 1) {
-      setHistoryIndex(historyIndex + 1);
-      setPosition(moveHistory[historyIndex + 1]);
-    }
-  };
-
   return (
     <div className="flex flex-col items-center gap-4 p-6">
       <h1 className="text-3xl font-bold text-gray-800">Chess Practice Board</h1>
@@ -114,22 +100,6 @@ export function ChessBoard() {
           <FlipVertical2 size={18} />
           Switch Side
         </button>
-
-        <button
-          onClick={undo}
-          disabled={historyIndex === 0}
-          className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-        >
-          Undo
-        </button>
-
-        <button
-          onClick={redo}
-          disabled={historyIndex === moveHistory.length - 1}
-          className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-        >
-          Redo
-        </button>
       </div>
 
       <div className="text-xs text-gray-600">
@@ -163,7 +133,6 @@ export function ChessBoard() {
                 <ChessSquare
                   squareKey={squareKey}
                   piece={square.piece}
-                  isLight={false} // Not needed with board image
                   isHighlighted={false}
                   onDragStart={handleDragStart}
                   onDragOver={handleDragOver}

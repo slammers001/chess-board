@@ -4,7 +4,6 @@ import { getPieceSymbol } from '../chessUtils';
 interface ChessSquareProps {
   squareKey: string;
   piece: ChessPiece | null;
-  isLight: boolean;
   isHighlighted: boolean;
   highlightColor?: string;
   onDragStart: (squareKey: string) => void;
@@ -16,7 +15,6 @@ interface ChessSquareProps {
 export function ChessSquare({
   squareKey,
   piece,
-  isLight,
   isHighlighted,
   highlightColor,
   onDragStart,
@@ -43,9 +41,7 @@ export function ChessSquare({
 
   return (
     <div
-      className={`relative w-full h-full flex items-center justify-center cursor-pointer ${
-        isLight ? 'bg-amber-100' : 'bg-amber-700'
-      }`}
+      className="relative w-full h-full flex items-center justify-center cursor-pointer"
       onDragOver={onDragOver}
       onDrop={handleDrop}
       onContextMenu={handleContextMenu}
@@ -57,13 +53,13 @@ export function ChessSquare({
         />
       )}
       {piece && (
-        <div
+        <img
           draggable
           onDragStart={handleDragStart}
-          className="text-5xl select-none cursor-grab active:cursor-grabbing z-10 hover:scale-110 transition-transform"
-        >
-          {getPieceSymbol(piece)}
-        </div>
+          src={getPieceSymbol(piece)}
+          alt={`${piece.color} ${piece.type}`}
+          className="w-12 h-12 select-none cursor-grab active:cursor-grabbing z-10 hover:scale-110 transition-transform"
+        />
       )}
     </div>
   );

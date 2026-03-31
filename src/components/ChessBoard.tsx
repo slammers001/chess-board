@@ -7,12 +7,19 @@ import { RotateCcw, FlipVertical2 } from 'lucide-react';
 export function ChessBoard() {
   const [position, setPosition] = useState<BoardPosition>(getInitialPosition());
   const [draggedPiece, setDraggedPiece] = useState<string | null>(null);
-  const [boardFlipped, setBoardFlipped] = useState(false);
+  const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
   const [moveHistory, setMoveHistory] = useState<BoardPosition[]>([getInitialPosition()]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const displayFiles = boardFlipped ? [...files].reverse() : files;
-  const displayRanks = boardFlipped ? [...ranks].reverse() : ranks;
+  const boardFlipped = playerColor === 'black';
+  const boardImage = boardFlipped ? '/board-black.png' : '/board-white.png';
+  const displayPosition = position;
+  
+  // Debug: Check if transformation is working
+  if (playerColor === 'white') {
+    console.log('Playing as white - a1 piece:', displayPosition['a1']?.piece);
+    console.log('Playing as white - a8 piece:', displayPosition['a8']?.piece);
+  }
 
   const handleDragStart = (squareKey: string) => {
     setDraggedPiece(squareKey);
@@ -46,7 +53,7 @@ export function ChessBoard() {
   };
 
   const flipBoard = () => {
-    setBoardFlipped(!boardFlipped);
+    setPlayerColor(playerColor === 'white' ? 'black' : 'white');
   };
 
   const undo = () => {
@@ -68,6 +75,30 @@ export function ChessBoard() {
       <h1 className="text-3xl font-bold text-gray-800">Chess Practice Board</h1>
 
       <div className="flex gap-2 flex-wrap justify-center">
+        <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
+          <span className="text-sm font-medium text-gray-700">Playing as:</span>
+          <button
+            onClick={() => setPlayerColor('white')}
+            className={`px-2 py-1 rounded text-sm font-medium transition-colors ${
+              playerColor === 'white' 
+                ? 'bg-white text-gray-800 border-2 border-gray-800' 
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+            }`}
+          >
+            White
+          </button>
+          <button
+            onClick={() => setPlayerColor('black')}
+            className={`px-2 py-1 rounded text-sm font-medium transition-colors ${
+              playerColor === 'black' 
+                ? 'bg-gray-800 text-white border-2 border-gray-800' 
+                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+            }`}
+          >
+            Black
+          </button>
+        </div>
+
         <button
           onClick={resetBoard}
           className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
@@ -81,7 +112,7 @@ export function ChessBoard() {
           className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
         >
           <FlipVertical2 size={18} />
-          Flip
+          Switch Side
         </button>
 
         <button
@@ -105,47 +136,44 @@ export function ChessBoard() {
         <p>Drag pieces to move them freely</p>
       </div>
 
-      <div className="relative">
-        <div className="grid grid-cols-8 gap-0 border-4 border-gray-800 shadow-2xl" style={{ width: 'fit-content' }}>
-          {displayRanks.map((rank: string) => (
-            displayFiles.map((file: string) => {
-              const squareKey = getSquareKey(file, rank);
-              const square = position[squareKey];
-              const isLight = getSquareColor(file, rank) === 'light';
-
-              return (
-                <div key={squareKey} className="w-16 h-16">
-                  <ChessSquare
-                    squareKey={squareKey}
-                    piece={square.piece}
-                    isLight={isLight}
-                    isHighlighted={false}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    onRightClick={() => {}}
-                  />
-                </div>
-              );
-            })
-          ))}
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-8" style={{ transform: 'translateY(-20px)' }}>
-          {displayFiles.map((file: string) => (
-            <div key={`file-label-${file}`} className="text-xs font-bold text-gray-700 w-16 text-center">
-              {file}
-            </div>
-          ))}
-        </div>
-
-        <div className="absolute top-0 bottom-0 left-0 flex flex-col-reverse justify-center gap-2 ml-1">
-          {displayRanks.map((rank: string) => (
-            <div key={`rank-label-${rank}`} className="text-xs font-bold text-gray-700 h-16 flex items-center">
-              {rank}
-            </div>
-          ))}
-        </div>
+      <div className="relative" style={{ width: '512px', height: '512px' }}>
+        <img 
+          src={boardImage} 
+          alt="Chess Board" 
+          className="absolute inset-0 w-full h-full"
+        />
+        {files.map((file: string) => 
+          ranks.map((rank: string) => {
+            const squareKey = getSquareKey(file, rank);
+            const square = displayPosition[squareKey];
+            
+            // Calculate position (0-based)
+            const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
+            const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
+            
+            const left = fileIndex * 64; // 64px per square
+            const top = rankIndex * 64;  // 64px per square
+            
+            return (
+              <div
+                key={squareKey}
+                className="absolute w-16 h-16"
+                style={{ left: `${left}px`, top: `${top}px` }}
+              >
+                <ChessSquare
+                  squareKey={squareKey}
+                  piece={square.piece}
+                  isLight={false} // Not needed with board image
+                  isHighlighted={false}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onRightClick={() => {}}
+                />
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

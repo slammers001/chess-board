@@ -1,4 +1,4 @@
-import { BoardPosition, ChessPiece, PieceType } from '../types/chess';
+import { BoardPosition, ChessPiece, PieceType } from './types/chess';
 
 export const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 export const ranks = ['1', '2', '3', '4', '5', '6', '7', '8'];
@@ -35,26 +35,26 @@ export const getInitialPosition = (): BoardPosition => {
 };
 
 export const getPieceSymbol = (piece: ChessPiece): string => {
-  const symbols = {
+  const images = {
     white: {
-      king: '♔',
-      queen: '♕',
-      rook: '♖',
-      bishop: '♗',
-      knight: '♘',
-      pawn: '♙'
+      king: '/white-king.png',
+      queen: '/white-queen.png',
+      rook: '/white-rook.png',
+      bishop: '/white-bishop.png',
+      knight: '/white-knight.png',
+      pawn: '/white-pawn.png'
     },
     black: {
-      king: '♚',
-      queen: '♛',
-      rook: '♜',
-      bishop: '♝',
-      knight: '♞',
-      pawn: '♟'
+      king: '/black-king.png',
+      queen: '/black-queen.png',
+      rook: '/black-rook.png',
+      bishop: '/black-bishop.png',
+      knight: '/black-knight.png',
+      pawn: '/black-pawn.png'
     }
   };
 
-  return symbols[piece.color][piece.type];
+  return images[piece.color][piece.type];
 };
 
 export const getPieceEmoji = (piece: ChessPiece): string => {

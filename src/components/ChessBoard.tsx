@@ -10,6 +10,7 @@ export function ChessBoard() {
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
   const [moveHistory, setMoveHistory] = useState<BoardPosition[]>([getInitialPosition()]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
 
   const boardFlipped = playerColor === 'black';
   const boardImage = boardFlipped ? '/board-black.png' : '/board-white.png';
@@ -22,7 +23,11 @@ export function ChessBoard() {
   }
 
   const handleDragStart = (squareKey: string) => {
+    // Only allow dragging if there's no piece already being dragged
+    if (draggedPiece) return;
+    
     setDraggedPiece(squareKey);
+    setSelectedPiece(squareKey);
   };
 
   const handleDrop = (targetSquare: string) => {
@@ -31,6 +36,7 @@ export function ChessBoard() {
     // Don't allow dropping on the same square
     if (draggedPiece === targetSquare) {
       setDraggedPiece(null);
+      setSelectedPiece(null);
       return;
     }
 
@@ -40,6 +46,7 @@ export function ChessBoard() {
 
     setPosition(newPosition);
     setDraggedPiece(null);
+    setSelectedPiece(null);
 
     const newHistory = moveHistory.slice(0, historyIndex + 1);
     newHistory.push(newPosition);
@@ -59,13 +66,13 @@ export function ChessBoard() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-4 p-6">
+    <div className="flex flex-col items-center gap-4 p-6 select-none">
       <h1 className="text-3xl font-bold text-gray-800">Chess Practice Board</h1>
 
       <div className="flex gap-3 flex-wrap justify-center">
         <button
           onClick={resetBoard}
-          className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+          className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 select-none"
         >
           <RotateCcw size={16} />
           Reset Board
@@ -112,6 +119,7 @@ export function ChessBoard() {
                   squareKey={squareKey}
                   piece={square.piece}
                   isHighlighted={false}
+                  isSelected={selectedPiece === squareKey}
                   onDragStart={handleDragStart}
                   onDrop={handleDrop}
                   onRightClick={() => {}}

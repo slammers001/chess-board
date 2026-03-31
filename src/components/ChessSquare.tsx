@@ -5,6 +5,7 @@ interface ChessSquareProps {
   squareKey: string;
   piece: ChessPiece | null;
   isHighlighted: boolean;
+  isSelected: boolean;
   highlightColor?: string;
   onDragStart: (squareKey: string) => void;
   onDrop: (squareKey: string) => void;
@@ -15,6 +16,7 @@ export function ChessSquare({
   squareKey,
   piece,
   isHighlighted,
+  isSelected,
   highlightColor,
   onDragStart,
   onDrop,
@@ -45,7 +47,7 @@ export function ChessSquare({
 
   return (
     <div
-      className="relative w-full h-full flex items-center justify-center cursor-pointer"
+      className="relative w-full h-full flex items-center justify-center cursor-pointer select-none"
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onContextMenu={handleContextMenu}
@@ -54,6 +56,12 @@ export function ChessSquare({
         <div
           className="absolute inset-0 opacity-60"
           style={{ backgroundColor: highlightColor }}
+        />
+      )}
+      {isSelected && (
+        <div
+          className="absolute inset-0 opacity-60"
+          style={{ backgroundColor: 'blue' }}
         />
       )}
       {piece && (

@@ -58,7 +58,7 @@ export function ChessSquare({
           onDragStart={handleDragStart}
           src={getPieceSymbol(piece)}
           alt={`${piece.color} ${piece.type}`}
-          className="w-12 h-12 select-none cursor-grab active:cursor-grabbing z-10 hover:scale-110 transition-transform"
+          className="w-16 h-16 select-none cursor-grab active:cursor-grabbing z-10 hover:scale-110 transition-transform"
         />
       )}
     </div>

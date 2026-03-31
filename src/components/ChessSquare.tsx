@@ -7,7 +7,6 @@ interface ChessSquareProps {
   isHighlighted: boolean;
   highlightColor?: string;
   onDragStart: (squareKey: string) => void;
-  onDragOver: (e: React.DragEvent) => void;
   onDrop: (squareKey: string) => void;
   onRightClick: (squareKey: string, e: React.MouseEvent) => void;
 }
@@ -18,15 +17,20 @@ export function ChessSquare({
   isHighlighted,
   highlightColor,
   onDragStart,
-  onDragOver,
   onDrop,
   onRightClick
 }: ChessSquareProps) {
   const handleDragStart = (e: React.DragEvent) => {
     if (piece) {
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', squareKey);
       onDragStart(squareKey);
     }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -42,7 +46,7 @@ export function ChessSquare({
   return (
     <div
       className="relative w-full h-full flex items-center justify-center cursor-pointer"
-      onDragOver={onDragOver}
+      onDragOver={handleDragOver}
       onDrop={handleDrop}
       onContextMenu={handleContextMenu}
     >

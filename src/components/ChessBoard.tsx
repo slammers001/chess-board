@@ -32,6 +32,12 @@ export function ChessBoard() {
   const handleDrop = (targetSquare: string) => {
     if (!draggedPiece) return;
 
+    // Don't allow dropping on the same square
+    if (draggedPiece === targetSquare) {
+      setDraggedPiece(null);
+      return;
+    }
+
     const newPosition = { ...position };
     newPosition[targetSquare] = { ...newPosition[draggedPiece] };
     newPosition[draggedPiece] = { piece: null };
@@ -111,7 +117,6 @@ export function ChessBoard() {
                   piece={square.piece}
                   isHighlighted={false}
                   onDragStart={handleDragStart}
-                  onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   onRightClick={() => {}}
                 />

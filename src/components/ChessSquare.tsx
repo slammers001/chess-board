@@ -61,7 +61,7 @@ export function ChessSquare({
       {isSelected && (
         <div
           className="absolute inset-0 opacity-60"
-          style={{ backgroundColor: 'blue' }}
+          style={{ backgroundColor: '#929BB3' }}
         />
       )}
       {piece && (

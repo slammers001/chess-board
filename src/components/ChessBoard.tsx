@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { BoardPosition } from '../types/chess';
-import { files, ranks, getSquareKey, getInitialPosition } from '../chessUtils';
+import { BoardPosition, ChessPiece } from '../types/chess';
+import { files, ranks, getSquareKey, getInitialPosition, getPieceSymbol } from '../chessUtils';
 import { ChessSquare } from './ChessSquare';
 import { RotateCcw, FlipVertical2 } from 'lucide-react';
 
@@ -11,6 +11,7 @@ export function ChessBoard() {
   const [moveHistory, setMoveHistory] = useState<BoardPosition[]>([getInitialPosition()]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null);
+  const [capturedPieces] = useState<{ white: ChessPiece[], black: ChessPiece[] }>({ white: [], black: [] });
 
   const boardFlipped = playerColor === 'black';
   const boardImage = boardFlipped ? '/board-black.png' : '/board-white.png';
@@ -61,6 +62,20 @@ export function ChessBoard() {
     setHistoryIndex(0);
   };
 
+  const undo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setPosition(moveHistory[historyIndex - 1]);
+    }
+  };
+
+  const redo = () => {
+    if (historyIndex < moveHistory.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setPosition(moveHistory[historyIndex + 1]);
+    }
+  };
+
   const flipBoard = () => {
     setPlayerColor(playerColor === 'white' ? 'black' : 'white');
   };
@@ -80,10 +95,26 @@ export function ChessBoard() {
 
         <button
           onClick={flipBoard}
-          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105"
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 select-none"
         >
           <FlipVertical2 size={16} />
           Switch Side
+        </button>
+
+        <button
+          onClick={undo}
+          disabled={historyIndex === 0}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed select-none"
+        >
+          Undo
+        </button>
+
+        <button
+          onClick={redo}
+          disabled={historyIndex === moveHistory.length - 1}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed select-none"
+        >
+          Redo
         </button>
       </div>
 
@@ -91,43 +122,77 @@ export function ChessBoard() {
         <p>Drag pieces to move them freely</p>
       </div>
 
-      <div className="relative" style={{ width: '640px', height: '640px' }}>
-        <img 
-          src={boardImage} 
-          alt="Chess Board" 
-          className="absolute inset-0 w-full h-full"
-        />
-        {files.map((file: string) => 
-          ranks.map((rank: string) => {
-            const squareKey = getSquareKey(file, rank);
-            const square = displayPosition[squareKey];
-            
-            // Calculate position (0-based)
-            const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
-            const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
-            
-            const left = fileIndex * 80; // 80px per square
-            const top = rankIndex * 80;  // 80px per square
-            
-            return (
-              <div
-                key={squareKey}
-                className="absolute w-20 h-20"
-                style={{ left: `${left}px`, top: `${top}px` }}
-              >
-                <ChessSquare
-                  squareKey={squareKey}
-                  piece={square.piece}
-                  isHighlighted={false}
-                  isSelected={selectedPiece === squareKey}
-                  onDragStart={handleDragStart}
-                  onDrop={handleDrop}
-                  onRightClick={() => {}}
-                />
+      <div className="flex gap-6 items-start">
+        <div className="relative" style={{ width: '640px', height: '640px' }}>
+          <img 
+            src={boardImage} 
+            alt="Chess Board" 
+            className="absolute inset-0 w-full h-full"
+          />
+          {files.map((file: string) => 
+            ranks.map((rank: string) => {
+              const squareKey = getSquareKey(file, rank);
+              const square = displayPosition[squareKey];
+              
+              // Calculate position (0-based)
+              const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
+              const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
+              
+              const left = fileIndex * 80; // 80px per square
+              const top = rankIndex * 80;  // 80px per square
+              
+              return (
+                <div
+                  key={squareKey}
+                  className="absolute w-20 h-20"
+                  style={{ left: `${left}px`, top: `${top}px` }}
+                >
+                  <ChessSquare
+                    squareKey={squareKey}
+                    piece={square.piece}
+                    isHighlighted={false}
+                    isSelected={selectedPiece === squareKey}
+                    onDragStart={handleDragStart}
+                    onDrop={handleDrop}
+                    onRightClick={() => {}}
+                  />
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4 p-4 bg-gray-100 rounded-lg min-w-48">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Captured Pieces</h3>
+          <div className="space-y-2">
+            <div>
+              <p className="text-sm font-medium text-gray-700">By White:</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {capturedPieces.black.map((piece, index) => (
+                  <img
+                    key={index}
+                    src={getPieceSymbol(piece)}
+                    alt={`${piece.color} ${piece.type}`}
+                    className="w-8 h-8"
+                  />
+                ))}
               </div>
-            );
-          })
-        )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-700">By Black:</p>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {capturedPieces.white.map((piece, index) => (
+                  <img
+                    key={index}
+                    src={getPieceSymbol(piece)}
+                    alt={`${piece.color} ${piece.type}`}
+                    className="w-8 h-8"
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

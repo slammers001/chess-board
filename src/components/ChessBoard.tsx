@@ -61,30 +61,6 @@ export function ChessBoard() {
       <h1 className="text-3xl font-bold text-gray-800">Chess Practice Board</h1>
 
       <div className="flex gap-2 flex-wrap justify-center">
-        <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
-          <span className="text-sm font-medium text-gray-700">Playing as:</span>
-          <button
-            onClick={() => setPlayerColor('white')}
-            className={`px-2 py-1 rounded text-sm font-medium transition-colors ${
-              playerColor === 'white' 
-                ? 'bg-white text-gray-800 border-2 border-gray-800' 
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-            }`}
-          >
-            White
-          </button>
-          <button
-            onClick={() => setPlayerColor('black')}
-            className={`px-2 py-1 rounded text-sm font-medium transition-colors ${
-              playerColor === 'black' 
-                ? 'bg-gray-800 text-white border-2 border-gray-800' 
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-            }`}
-          >
-            Black
-          </button>
-        </div>
-
         <button
           onClick={resetBoard}
           className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"

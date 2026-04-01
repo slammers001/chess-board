@@ -14,7 +14,7 @@ export function ChessBoard() {
   const [capturedPieces, setCapturedPieces] = useState<{ white: ChessPiece[], black: ChessPiece[] }>({ white: [], black: [] });
 
   const boardFlipped = playerColor === 'black';
-  const boardImage = boardFlipped ? '/board-black.png' : '/board-white.png';
+  const boardImage = boardFlipped ? './board-black.png' : './board-white.png';
   const displayPosition = position;
   
   // Debug: Check if transformation is working

@@ -34,27 +34,31 @@ export const getInitialPosition = (): BoardPosition => {
   return position;
 };
 
-export const getPieceSymbol = (piece: ChessPiece): string => {
-  const images = {
-    white: {
-      king: '/white-king.png',
-      queen: '/white-queen.png',
-      rook: '/white-rook.png',
-      bishop: '/white-bishop.png',
-      knight: '/white-knight.png',
-      pawn: '/white-pawn.png'
-    },
-    black: {
-      king: '/black-king.png',
-      queen: '/black-queen.png',
-      rook: '/black-rook.png',
-      bishop: '/black-bishop.png',
-      knight: '/black-knight.png',
-      pawn: '/black-pawn.png'
-    }
-  };
-
-  return images[piece.color][piece.type];
+export function getPieceSymbol(piece: ChessPiece): string {
+  switch (piece.color) {
+    case 'white':
+      switch (piece.type) {
+        case 'king': return './white-king.png';
+        case 'queen': return './white-queen.png';
+        case 'rook': return './white-rook.png';
+        case 'bishop': return './white-bishop.png';
+        case 'knight': return './white-knight.png';
+        case 'pawn': return './white-pawn.png';
+        default: return '';
+      }
+    case 'black':
+      switch (piece.type) {
+        case 'king': return './black-king.png';
+        case 'queen': return './black-queen.png';
+        case 'rook': return './black-rook.png';
+        case 'bishop': return './black-bishop.png';
+        case 'knight': return './black-knight.png';
+        case 'pawn': return './black-pawn.png';
+        default: return '';
+      }
+    default:
+      return '';
+  }
 };
 
 export const getPieceEmoji = (piece: ChessPiece): string => {

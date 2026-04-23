@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Chess } from 'chess.js';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Chess, Square } from 'chess.js';
 import { files, ranks, getSquareKey, getPieceSymbol } from '../chessUtils';
 import { ChessSquare } from './ChessSquare';
 import {
@@ -21,15 +21,21 @@ interface BotGameProps {
 
 const INITIAL_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
+interface MoveRecord {
+  san: string;
+  color: 'white' | 'black';
+}
+
 export function BotGame({ playerColor, onBack }: BotGameProps) {
   const [fen, setFen] = useState(INITIAL_FEN);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [legalMoves, setLegalMoves] = useState<string[]>([]);
   const [isThinking, setIsThinking] = useState(false);
-  const [moveHistory, setMoveHistory] = useState<string[]>([INITIAL_FEN]);
-  const [historyIndex, setHistoryIndex] = useState(0);
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [promotionPending, setPromotionPending] = useState<{ from: string; to: string } | null>(null);
+  const [moveRecords, setMoveRecords] = useState<MoveRecord[]>([]);
+  const isThinkingRef = useRef(false);
+  const fenRef = useRef(INITIAL_FEN);
 
   const boardFlipped = playerColor === 'black';
   const position = fenToBoardPosition(fen);
@@ -39,36 +45,52 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
   const isPlayerTurn = turn === playerColor;
   const botColor = playerColor === 'white' ? 'black' : 'white';
 
-  const botMove = useCallback(() => {
-    if (status.isOver || isPlayerTurn) return;
+  // Keep refs in sync
+  useEffect(() => { fenRef.current = fen; }, [fen]);
 
+  const addMoveRecord = useCallback((san: string, color: 'white' | 'black') => {
+    setMoveRecords(prev => [...prev, { san, color }]);
+  }, []);
+
+  const botMove = useCallback(() => {
+    if (isThinkingRef.current) return;
+    const currentFen = fenRef.current;
+    const currentTurn = getTurnFromFen(currentFen);
+    if (currentTurn === playerColor) return;
+    const currentStatus = getGameStatus(currentFen);
+    if (currentStatus.isOver) return;
+
+    isThinkingRef.current = true;
     setIsThinking(true);
+
     setTimeout(() => {
-      const best = getBestMove(fen, 3);
+      const best = getBestMove(currentFen, 2);
       if (best) {
-        const newFen = makeMove(fen, best.from, best.to, best.promotion);
+        const newFen = makeMove(currentFen, best.from, best.to, best.promotion);
         if (newFen) {
           setFen(newFen);
+          fenRef.current = newFen;
           setLastMove({ from: best.from, to: best.to });
-          const newHistory = moveHistory.slice(0, historyIndex + 1);
-          newHistory.push(newFen);
-          setMoveHistory(newHistory);
-          setHistoryIndex(newHistory.length - 1);
+          addMoveRecord(best.san, botColor);
         }
       }
+      isThinkingRef.current = false;
       setIsThinking(false);
-    }, 300);
-  }, [fen, isPlayerTurn, status.isOver, moveHistory, historyIndex]);
+    }, 100);
+  }, [playerColor, botColor, addMoveRecord]);
 
   useEffect(() => {
-    if (!isPlayerTurn && !status.isOver && !isThinking) {
-      botMove();
+    if (!isPlayerTurn && !status.isOver && !isThinkingRef.current) {
+      const timer = setTimeout(botMove, 200);
+      return () => clearTimeout(timer);
     }
-  }, [isPlayerTurn, status.isOver, isThinking, botMove]);
+  }, [isPlayerTurn, status.isOver, botMove]);
 
+  // If player is black, bot moves first
   useEffect(() => {
     if (playerColor === 'black' && fen === INITIAL_FEN) {
-      botMove();
+      const timer = setTimeout(botMove, 500);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -79,7 +101,7 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
 
     if (selectedSquare && legalMoves.includes(squareKey)) {
       const game = new Chess(fen);
-      const movingPiece = game.get(selectedSquare as any);
+      const movingPiece = game.get(selectedSquare as Square);
       const isPromotion =
         movingPiece?.type === 'p' &&
         ((movingPiece.color === 'w' && squareKey[1] === '8') ||
@@ -92,12 +114,13 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
 
       const newFen = makeMove(fen, selectedSquare, squareKey);
       if (newFen) {
+        const game2 = new Chess(newFen);
+        const history = game2.history({ verbose: true });
+        const lastMoveSan = history[history.length - 1]?.san || '';
         setFen(newFen);
+        fenRef.current = newFen;
         setLastMove({ from: selectedSquare, to: squareKey });
-        const newHistory = moveHistory.slice(0, historyIndex + 1);
-        newHistory.push(newFen);
-        setMoveHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
+        addMoveRecord(lastMoveSan, playerColor);
       }
       setSelectedSquare(null);
       setLegalMoves([]);
@@ -114,12 +137,13 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
     if (!promotionPending) return;
     const newFen = makeMove(fen, promotionPending.from, promotionPending.to, promotionType);
     if (newFen) {
+      const game2 = new Chess(newFen);
+      const history = game2.history({ verbose: true });
+      const lastMoveSan = history[history.length - 1]?.san || '';
       setFen(newFen);
+      fenRef.current = newFen;
       setLastMove({ from: promotionPending.from, to: promotionPending.to });
-      const newHistory = moveHistory.slice(0, historyIndex + 1);
-      newHistory.push(newFen);
-      setMoveHistory(newHistory);
-      setHistoryIndex(newHistory.length - 1);
+      addMoveRecord(lastMoveSan, playerColor);
     }
     setPromotionPending(null);
     setSelectedSquare(null);
@@ -140,7 +164,7 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
 
     if (legalMoves.includes(targetSquare)) {
       const game = new Chess(fen);
-      const movingPiece = game.get(selectedSquare as any);
+      const movingPiece = game.get(selectedSquare as Square);
       const isPromotion =
         movingPiece?.type === 'p' &&
         ((movingPiece.color === 'w' && targetSquare[1] === '8') ||
@@ -153,12 +177,13 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
 
       const newFen = makeMove(fen, selectedSquare, targetSquare);
       if (newFen) {
+        const game2 = new Chess(newFen);
+        const history = game2.history({ verbose: true });
+        const lastMoveSan = history[history.length - 1]?.san || '';
         setFen(newFen);
+        fenRef.current = newFen;
         setLastMove({ from: selectedSquare, to: targetSquare });
-        const newHistory = moveHistory.slice(0, historyIndex + 1);
-        newHistory.push(newFen);
-        setMoveHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
+        addMoveRecord(lastMoveSan, playerColor);
       }
     }
     setSelectedSquare(null);
@@ -167,30 +192,28 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
 
   const resetGame = () => {
     setFen(INITIAL_FEN);
+    fenRef.current = INITIAL_FEN;
     setSelectedSquare(null);
     setLegalMoves([]);
     setLastMove(null);
-    setMoveHistory([INITIAL_FEN]);
-    setHistoryIndex(0);
+    setMoveRecords([]);
     setPromotionPending(null);
+    isThinkingRef.current = false;
+    setIsThinking(false);
   };
 
-  const getMoveList = () => {
-    const moves: string[] = [];
-    for (let i = 1; i < moveHistory.length; i++) {
-      const prevGame = new Chess(moveHistory[i - 1]);
-      const currGame = new Chess(moveHistory[i]);
-      const prevMoves = prevGame.history({ verbose: true });
-      const currMoves = currGame.history({ verbose: true });
-      if (currMoves.length > prevMoves.length) {
-        const newMove = currMoves[currMoves.length - 1];
-        moves.push(newMove.san);
-      }
-    }
-    return moves;
-  };
+  // Build display rows for move list
+  const moveRows: { num: number; white: string; black?: string }[] = [];
+  for (let i = 0; i < moveRecords.length; i += 2) {
+    moveRows.push({
+      num: Math.floor(i / 2) + 1,
+      white: moveRecords[i].san,
+      black: moveRecords[i + 1]?.san,
+    });
+  }
 
-  const moveList = getMoveList();
+  const displayFiles = boardFlipped ? [...files].reverse() : files;
+  const displayRanks = boardFlipped ? ranks : [...ranks].reverse();
 
   return (
     <div className="flex flex-col items-center gap-4 p-6 select-none">
@@ -260,57 +283,79 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
             {isThinking && <span className="ml-auto text-xs text-blue-600 animate-pulse">thinking...</span>}
           </div>
 
-          {/* Board */}
-          <div className="relative" style={{ width: '640px', height: '640px' }}>
-            <img
-              src={boardFlipped ? './board-black.png' : './board-white.png'}
-              alt="Chess Board"
-              className="absolute inset-0 w-full h-full"
-            />
-            {files.map((file: string) =>
-              ranks.map((rank: string) => {
-                const squareKey = getSquareKey(file, rank);
-                const square = position[squareKey];
-                const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
-                const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
-                const left = fileIndex * 80;
-                const top = rankIndex * 80;
+          {/* Board with labels */}
+          <div className="flex items-end gap-0">
+            {/* Rank labels on left */}
+            <div className="flex flex-col" style={{ width: '20px' }}>
+              {displayRanks.map((rank) => (
+                <div key={rank} className="h-20 flex items-center justify-center text-xs font-semibold text-gray-500">
+                  {rank}
+                </div>
+              ))}
+            </div>
 
-                const isLegalTarget = legalMoves.includes(squareKey);
-                const isLastMoveSquare = lastMove?.from === squareKey || lastMove?.to === squareKey;
-                const isCheckSquare = inCheck && square?.piece?.type === 'king' && square?.piece?.color === turn;
+            {/* Board */}
+            <div className="relative" style={{ width: '640px', height: '640px' }}>
+              <img
+                src={boardFlipped ? './board-black.png' : './board-white.png'}
+                alt="Chess Board"
+                className="absolute inset-0 w-full h-full"
+              />
+              {files.map((file: string) =>
+                ranks.map((rank: string) => {
+                  const squareKey = getSquareKey(file, rank);
+                  const square = position[squareKey];
+                  const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
+                  const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
+                  const left = fileIndex * 80;
+                  const top = rankIndex * 80;
 
-                return (
-                  <div
-                    key={squareKey}
-                    className="absolute w-20 h-20"
-                    style={{ left: `${left}px`, top: `${top}px` }}
-                  >
-                    <ChessSquare
-                      squareKey={squareKey}
-                      piece={square?.piece as ChessPiece | null}
-                      isHighlighted={isLegalTarget}
-                      isSelected={selectedSquare === squareKey}
-                      highlightColor={square?.piece ? 'rgba(220, 38, 38, 0.5)' : 'rgba(34, 197, 94, 0.5)'}
-                      onDragStart={handleDragStart}
-                      onDrop={handleDrop}
-                      onRightClick={() => handleSquareClick(squareKey)}
-                    />
-                    {isLastMoveSquare && !selectedSquare && (
-                      <div className="absolute inset-0 opacity-30 bg-yellow-400 pointer-events-none rounded-sm" />
-                    )}
-                    {isCheckSquare && (
-                      <div className="absolute inset-0 opacity-40 bg-red-500 pointer-events-none rounded-sm" />
-                    )}
-                    {isLegalTarget && !square?.piece && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-6 h-6 rounded-full bg-emerald-500/40" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
+                  const isLegalTarget = legalMoves.includes(squareKey);
+                  const isLastMoveSquare = lastMove?.from === squareKey || lastMove?.to === squareKey;
+                  const isCheckSquare = inCheck && square?.piece?.type === 'king' && square?.piece?.color === turn;
+
+                  return (
+                    <div
+                      key={squareKey}
+                      className="absolute w-20 h-20"
+                      style={{ left: `${left}px`, top: `${top}px` }}
+                      onClick={() => handleSquareClick(squareKey)}
+                    >
+                      <ChessSquare
+                        squareKey={squareKey}
+                        piece={square?.piece as ChessPiece | null}
+                        isHighlighted={isLegalTarget}
+                        isSelected={selectedSquare === squareKey}
+                        highlightColor={square?.piece ? 'rgba(220, 38, 38, 0.5)' : 'rgba(34, 197, 94, 0.5)'}
+                        onDragStart={handleDragStart}
+                        onDrop={handleDrop}
+                        onRightClick={() => handleSquareClick(squareKey)}
+                      />
+                      {isLastMoveSquare && (
+                        <div className="absolute inset-0 opacity-30 bg-yellow-400 pointer-events-none rounded-sm" />
+                      )}
+                      {isCheckSquare && (
+                        <div className="absolute inset-0 opacity-40 bg-red-500 pointer-events-none rounded-sm" />
+                      )}
+                      {isLegalTarget && !square?.piece && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-6 h-6 rounded-full bg-emerald-500/40" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* File labels below board */}
+          <div className="flex" style={{ marginLeft: '20px' }}>
+            {displayFiles.map((file) => (
+              <div key={file} className="w-20 flex items-center justify-center text-xs font-semibold text-gray-500">
+                {file}
+              </div>
+            ))}
           </div>
 
           {/* Player info */}
@@ -329,27 +374,33 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
         </div>
 
         {/* Move history */}
-        <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-xl min-w-56 max-h-[640px] overflow-y-auto border border-gray-200">
+        <div className="flex flex-col gap-2 p-4 bg-gray-50 rounded-xl min-w-56 max-h-[660px] overflow-y-auto border border-gray-200">
           <h3 className="text-sm font-semibold text-gray-700 mb-1">Moves</h3>
-          {moveList.length === 0 ? (
+          {moveRows.length === 0 ? (
             <p className="text-xs text-gray-400 italic">No moves yet</p>
           ) : (
             <div className="space-y-0.5">
-              {moveList.map((move, i) => {
-                const moveNum = Math.floor(i / 2) + 1;
-                const isWhiteMove = i % 2 === 0;
-                return (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    {isWhiteMove && <span className="text-gray-400 w-6 text-right">{moveNum}.</span>}
-                    {!isWhiteMove && <span className="w-6" />}
+              {moveRows.map((row) => (
+                <div key={row.num} className="flex items-center gap-2 text-xs">
+                  <span className="text-gray-400 w-6 text-right">{row.num}.</span>
+                  <span className={`font-mono px-1.5 py-0.5 rounded ${
+                    row.white === moveRecords[moveRecords.length - 1]?.san
+                      ? 'bg-blue-100 text-blue-700 font-semibold'
+                      : 'text-gray-600'
+                  }`}>
+                    {row.white}
+                  </span>
+                  {row.black && (
                     <span className={`font-mono px-1.5 py-0.5 rounded ${
-                      i === moveList.length - 1 ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-600'
+                      row.black === moveRecords[moveRecords.length - 1]?.san
+                        ? 'bg-blue-100 text-blue-700 font-semibold'
+                        : 'text-gray-600'
                     }`}>
-                      {move}
+                      {row.black}
                     </span>
-                  </div>
-                );
-              })}
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

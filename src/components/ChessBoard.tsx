@@ -20,12 +20,8 @@ export function ChessBoard({ onPlayVsBot }: ChessBoardProps) {
   const boardFlipped = playerColor === 'black';
   const boardImage = boardFlipped ? './board-black.png' : './board-white.png';
   const displayPosition = position;
-  
-  // Debug: Check if transformation is working
-  if (playerColor === 'white') {
-    console.log('Playing as white - a1 piece:', displayPosition['a1']?.piece);
-    console.log('Playing as white - a8 piece:', displayPosition['a8']?.piece);
-  }
+  const displayFiles = boardFlipped ? [...files].reverse() : files;
+  const displayRanks = boardFlipped ? ranks : [...ranks].reverse();
 
   const handleDragStart = (squareKey: string) => {
     // Only allow dragging if there's no piece already being dragged
@@ -204,43 +200,65 @@ export function ChessBoard({ onPlayVsBot }: ChessBoardProps) {
       </div>
 
       <div className="flex gap-6 items-start">
-        <div className="relative" style={{ width: '640px', height: '640px' }}>
-          <img 
-            src={boardImage} 
-            alt="Chess Board" 
-            className="absolute inset-0 w-full h-full"
-          />
-          {files.map((file: string) => 
-            ranks.map((rank: string) => {
-              const squareKey = getSquareKey(file, rank);
-              const square = displayPosition[squareKey];
-              
-              // Calculate position (0-based)
-              const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
-              const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
-              
-              const left = fileIndex * 80; // 80px per square
-              const top = rankIndex * 80;  // 80px per square
-              
-              return (
-                <div
-                  key={squareKey}
-                  className="absolute w-20 h-20"
-                  style={{ left: `${left}px`, top: `${top}px` }}
-                >
-                  <ChessSquare
-                    squareKey={squareKey}
-                    piece={square.piece}
-                    isHighlighted={false}
-                    isSelected={selectedPiece === squareKey}
-                    onDragStart={handleDragStart}
-                    onDrop={handleDrop}
-                    onRightClick={() => {}}
-                  />
+        <div className="flex flex-col gap-0">
+          <div className="flex items-end gap-0">
+            {/* Rank labels on left */}
+            <div className="flex flex-col" style={{ width: '20px' }}>
+              {displayRanks.map((rank) => (
+                <div key={rank} className="h-20 flex items-center justify-center text-xs font-semibold text-gray-500">
+                  {rank}
                 </div>
-              );
-            })
-          )}
+              ))}
+            </div>
+
+            {/* Board */}
+            <div className="relative" style={{ width: '640px', height: '640px' }}>
+              <img
+                src={boardImage}
+                alt="Chess Board"
+                className="absolute inset-0 w-full h-full"
+              />
+              {files.map((file: string) =>
+                ranks.map((rank: string) => {
+                  const squareKey = getSquareKey(file, rank);
+                  const square = displayPosition[squareKey];
+
+                  const fileIndex = boardFlipped ? 7 - files.indexOf(file) : files.indexOf(file);
+                  const rankIndex = boardFlipped ? ranks.indexOf(rank) : 7 - ranks.indexOf(rank);
+
+                  const left = fileIndex * 80;
+                  const top = rankIndex * 80;
+
+                  return (
+                    <div
+                      key={squareKey}
+                      className="absolute w-20 h-20"
+                      style={{ left: `${left}px`, top: `${top}px` }}
+                    >
+                      <ChessSquare
+                        squareKey={squareKey}
+                        piece={square.piece}
+                        isHighlighted={false}
+                        isSelected={selectedPiece === squareKey}
+                        onDragStart={handleDragStart}
+                        onDrop={handleDrop}
+                        onRightClick={() => {}}
+                      />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* File labels below board */}
+          <div className="flex" style={{ marginLeft: '20px' }}>
+            {displayFiles.map((file) => (
+              <div key={file} className="w-20 flex items-center justify-center text-xs font-semibold text-gray-500">
+                {file}
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="flex flex-col gap-4 p-4 bg-gray-100 rounded-lg min-w-48">

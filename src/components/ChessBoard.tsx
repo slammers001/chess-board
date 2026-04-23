@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BoardPosition, ChessPiece } from '../types/chess';
 import { files, ranks, getSquareKey, getInitialPosition, getPieceSymbol } from '../chessUtils';
 import { ChessSquare } from './ChessSquare';
-import { RotateCcw, FlipVertical2 } from 'lucide-react';
+import { RotateCcw, FlipVertical2, Bot } from 'lucide-react';
 
-export function ChessBoard() {
+interface ChessBoardProps {
+  onPlayVsBot?: () => void;
+}
+
+export function ChessBoard({ onPlayVsBot }: ChessBoardProps) {
   const [position, setPosition] = useState<BoardPosition>(getInitialPosition());
   const [draggedPiece, setDraggedPiece] = useState<string | null>(null);
   const [playerColor, setPlayerColor] = useState<'white' | 'black'>('white');
@@ -128,6 +132,25 @@ export function ChessBoard() {
     setPlayerColor(playerColor === 'white' ? 'black' : 'white');
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        redo();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Z') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [historyIndex, moveHistory.length]);
+
   return (
     <div className="flex flex-col items-center gap-4 p-6 select-none">
       <h1 className="text-3xl font-bold text-gray-800">Chess Practice Board</h1>
@@ -164,6 +187,16 @@ export function ChessBoard() {
         >
           Redo
         </button>
+
+        {onPlayVsBot && (
+          <button
+            onClick={onPlayVsBot}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all duration-200 text-sm font-medium shadow-md hover:shadow-lg transform hover:scale-105 select-none"
+          >
+            <Bot size={16} />
+            Play vs Bot
+          </button>
+        )}
       </div>
 
       <div className="text-xs text-gray-600">

@@ -184,6 +184,10 @@ export function getBestMove(fen: string, depth: number = 3): Move | null {
   return bestMove;
 }
 
+const TYPE_MAP: Record<string, string> = {
+  p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king',
+};
+
 export function fenToBoardPosition(fen: string): Record<string, { piece: { type: string; color: string } | null }> {
   const game = new Chess(fen);
   const board = game.board();
@@ -194,7 +198,7 @@ export function fenToBoardPosition(fen: string): Record<string, { piece: { type:
       const square = String.fromCharCode(97 + c) + (8 - r);
       const piece = board[r][c];
       position[square] = piece
-        ? { piece: { type: piece.type, color: piece.color === 'w' ? 'white' : 'black' } }
+        ? { piece: { type: TYPE_MAP[piece.type] || piece.type, color: piece.color === 'w' ? 'white' : 'black' } }
         : { piece: null };
     }
   }

@@ -178,11 +178,13 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
   const getMoveList = () => {
     const moves: string[] = [];
     for (let i = 1; i < moveHistory.length; i++) {
+      const prevGame = new Chess(moveHistory[i - 1]);
       const currGame = new Chess(moveHistory[i]);
-      const diff = currGame.history({ verbose: true });
-      if (diff.length > 0) {
-        const lastMove = diff[diff.length - 1];
-        moves.push(lastMove.san);
+      const prevMoves = prevGame.history({ verbose: true });
+      const currMoves = currGame.history({ verbose: true });
+      if (currMoves.length > prevMoves.length) {
+        const newMove = currMoves[currMoves.length - 1];
+        moves.push(newMove.san);
       }
     }
     return moves;

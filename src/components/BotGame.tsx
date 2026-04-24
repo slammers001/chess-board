@@ -1,15 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Chess, Square } from 'chess.js';
+import { Chess, Square, Move } from 'chess.js';
 import { files, ranks, getSquareKey, getPieceSymbol } from '../chessUtils';
 import { ChessSquare } from './ChessSquare';
 import {
   fenToBoardPosition,
-  getBestMove,
   getGameStatus,
   getLegalMoves,
   getTurnFromFen,
   isInCheck,
-  makeMove,
 } from '../chessBot';
 import { RotateCcw, ArrowLeft, Bot, User, Crown } from 'lucide-react';
 import { ChessPiece } from '../types/chess';
@@ -34,8 +32,11 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
   const [promotionPending, setPromotionPending] = useState<{ from: string; to: string } | null>(null);
   const [moveRecords, setMoveRecords] = useState<MoveRecord[]>([]);
+  const [gameOver, setGameOver] = useState(false);
+
   const isThinkingRef = useRef(false);
-  const fenRef = useRef(INITIAL_FEN);
+  const gameOverRef = useRef(false);
+  const gameRef = useRef(new Chess());
 
   const boardFlipped = playerColor === 'black';
   const position = fenToBoardPosition(fen);
@@ -45,63 +46,98 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
   const isPlayerTurn = turn === playerColor;
   const botColor = playerColor === 'white' ? 'black' : 'white';
 
-  // Keep refs in sync
-  useEffect(() => { fenRef.current = fen; }, [fen]);
+  // Sync gameOver ref
+  useEffect(() => {
+    if (status.isOver && !gameOverRef.current) {
+      setGameOver(true);
+      gameOverRef.current = true;
+    }
+  }, [status.isOver]);
 
-  const addMoveRecord = useCallback((san: string, color: 'white' | 'black') => {
-    setMoveRecords(prev => [...prev, { san, color }]);
+  const applyMove = useCallback((moveResult: Move, color: 'white' | 'black') => {
+    const newFen = gameRef.current.fen();
+    setFen(newFen);
+    setLastMove({ from: moveResult.from, to: moveResult.to });
+    setMoveRecords(prev => [...prev, { san: moveResult.san, color }]);
   }, []);
 
   const botMove = useCallback(() => {
-    if (isThinkingRef.current) return;
-    const currentFen = fenRef.current;
-    const currentTurn = getTurnFromFen(currentFen);
-    if (currentTurn === playerColor) return;
-    const currentStatus = getGameStatus(currentFen);
-    if (currentStatus.isOver) return;
+    if (isThinkingRef.current || gameOverRef.current) return;
+    if (gameRef.current.turn() === (playerColor === 'white' ? 'w' : 'b')) return;
+    if (gameRef.current.isGameOver()) return;
 
     isThinkingRef.current = true;
     setIsThinking(true);
 
+    // Use a very simple approach: pick a random move from the top 3 evaluated moves
+    // This avoids the minimax blocking the main thread
     setTimeout(() => {
-      const best = getBestMove(currentFen, 2);
-      if (best) {
-        const newFen = makeMove(currentFen, best.from, best.to, best.promotion);
-        if (newFen) {
-          setFen(newFen);
-          fenRef.current = newFen;
-          setLastMove({ from: best.from, to: best.to });
-          addMoveRecord(best.san, botColor);
+      try {
+        const moves = gameRef.current.moves({ verbose: true });
+        if (moves.length === 0) {
+          isThinkingRef.current = false;
+          setIsThinking(false);
+          return;
         }
+
+        // Simple evaluation: score each move by immediate capture value + basic positional bonus
+        const scored = moves.map((m: Move) => {
+          let score = 0;
+          if (m.captured) {
+            const vals: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900 };
+            score += vals[m.captured] || 0;
+          }
+          if (m.promotion) score += 800;
+          if (m.san.includes('+')) score += 50;
+          if (m.san.includes('#')) score += 99999;
+          // Prefer center moves
+          const centerFiles = ['d', 'e'];
+          const centerRanks = ['4', '5'];
+          if (centerFiles.includes(m.to[0]) && centerRanks.includes(m.to[1])) score += 20;
+          // Add a small random factor so it doesn't play the same every time
+          score += Math.random() * 30;
+          return { move: m, score };
+        });
+
+        scored.sort((a, b) => b.score - a.score);
+
+        // Pick from top 3 moves with weighted random
+        const topN = scored.slice(0, Math.min(3, scored.length));
+        const pick = topN[Math.floor(Math.random() * topN.length)];
+        const chosenMove = pick.move;
+
+        gameRef.current.move(chosenMove);
+        applyMove(chosenMove, botColor);
+      } catch {
+        // If anything goes wrong, just skip
       }
       isThinkingRef.current = false;
       setIsThinking(false);
-    }, 100);
-  }, [playerColor, botColor, addMoveRecord]);
+    }, 300);
+  }, [playerColor, botColor, applyMove]);
 
   useEffect(() => {
-    if (!isPlayerTurn && !status.isOver && !isThinkingRef.current) {
+    if (!isPlayerTurn && !gameOverRef.current && !isThinkingRef.current) {
       const timer = setTimeout(botMove, 200);
       return () => clearTimeout(timer);
     }
-  }, [isPlayerTurn, status.isOver, botMove]);
+  }, [isPlayerTurn, gameOver, isThinking, botMove]);
 
   // If player is black, bot moves first
   useEffect(() => {
-    if (playerColor === 'black' && fen === INITIAL_FEN) {
+    if (playerColor === 'black' && fen === INITIAL_FEN && !isThinkingRef.current) {
       const timer = setTimeout(botMove, 500);
       return () => clearTimeout(timer);
     }
   }, []);
 
   const handleSquareClick = (squareKey: string) => {
-    if (status.isOver || !isPlayerTurn || isThinking || promotionPending) return;
+    if (gameOver || !isPlayerTurn || isThinking || promotionPending) return;
 
     const piece = position[squareKey]?.piece;
 
     if (selectedSquare && legalMoves.includes(squareKey)) {
-      const game = new Chess(fen);
-      const movingPiece = game.get(selectedSquare as Square);
+      const movingPiece = gameRef.current.get(selectedSquare as Square);
       const isPromotion =
         movingPiece?.type === 'p' &&
         ((movingPiece.color === 'w' && squareKey[1] === '8') ||
@@ -112,15 +148,16 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
         return;
       }
 
-      const newFen = makeMove(fen, selectedSquare, squareKey);
-      if (newFen) {
-        const game2 = new Chess(newFen);
-        const history = game2.history({ verbose: true });
-        const lastMoveSan = history[history.length - 1]?.san || '';
-        setFen(newFen);
-        fenRef.current = newFen;
-        setLastMove({ from: selectedSquare, to: squareKey });
-        addMoveRecord(lastMoveSan, playerColor);
+      try {
+        const moveResult = gameRef.current.move({
+          from: selectedSquare as Square,
+          to: squareKey as Square,
+        });
+        if (moveResult) {
+          applyMove(moveResult, playerColor);
+        }
+      } catch {
+        // Invalid move
       }
       setSelectedSquare(null);
       setLegalMoves([]);
@@ -135,15 +172,17 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
 
   const handlePromotion = (promotionType: string) => {
     if (!promotionPending) return;
-    const newFen = makeMove(fen, promotionPending.from, promotionPending.to, promotionType);
-    if (newFen) {
-      const game2 = new Chess(newFen);
-      const history = game2.history({ verbose: true });
-      const lastMoveSan = history[history.length - 1]?.san || '';
-      setFen(newFen);
-      fenRef.current = newFen;
-      setLastMove({ from: promotionPending.from, to: promotionPending.to });
-      addMoveRecord(lastMoveSan, playerColor);
+    try {
+      const moveResult = gameRef.current.move({
+        from: promotionPending.from as Square,
+        to: promotionPending.to as Square,
+        promotion: promotionType as 'q' | 'r' | 'b' | 'n',
+      });
+      if (moveResult) {
+        applyMove(moveResult, playerColor);
+      }
+    } catch {
+      // Invalid promotion
     }
     setPromotionPending(null);
     setSelectedSquare(null);
@@ -151,7 +190,7 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
   };
 
   const handleDragStart = (squareKey: string) => {
-    if (status.isOver || !isPlayerTurn || isThinking) return;
+    if (gameOver || !isPlayerTurn || isThinking) return;
     const piece = position[squareKey]?.piece;
     if (piece && piece.color === playerColor) {
       setSelectedSquare(squareKey);
@@ -163,8 +202,7 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
     if (!selectedSquare || !isPlayerTurn || isThinking || promotionPending) return;
 
     if (legalMoves.includes(targetSquare)) {
-      const game = new Chess(fen);
-      const movingPiece = game.get(selectedSquare as Square);
+      const movingPiece = gameRef.current.get(selectedSquare as Square);
       const isPromotion =
         movingPiece?.type === 'p' &&
         ((movingPiece.color === 'w' && targetSquare[1] === '8') ||
@@ -175,15 +213,16 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
         return;
       }
 
-      const newFen = makeMove(fen, selectedSquare, targetSquare);
-      if (newFen) {
-        const game2 = new Chess(newFen);
-        const history = game2.history({ verbose: true });
-        const lastMoveSan = history[history.length - 1]?.san || '';
-        setFen(newFen);
-        fenRef.current = newFen;
-        setLastMove({ from: selectedSquare, to: targetSquare });
-        addMoveRecord(lastMoveSan, playerColor);
+      try {
+        const moveResult = gameRef.current.move({
+          from: selectedSquare as Square,
+          to: targetSquare as Square,
+        });
+        if (moveResult) {
+          applyMove(moveResult, playerColor);
+        }
+      } catch {
+        // Invalid move
       }
     }
     setSelectedSquare(null);
@@ -191,13 +230,15 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
   };
 
   const resetGame = () => {
+    gameRef.current = new Chess();
     setFen(INITIAL_FEN);
-    fenRef.current = INITIAL_FEN;
     setSelectedSquare(null);
     setLegalMoves([]);
     setLastMove(null);
     setMoveRecords([]);
     setPromotionPending(null);
+    setGameOver(false);
+    gameOverRef.current = false;
     isThinkingRef.current = false;
     setIsThinking(false);
   };

@@ -1,5 +1,8 @@
 import { Chess, Move, Square } from 'chess.js';
 
+/* =========================
+   PIECE VALUES
+========================= */
 const PIECE_VALUES: Record<string, number> = {
   pawn: 100,
   knight: 320,
@@ -9,69 +12,81 @@ const PIECE_VALUES: Record<string, number> = {
   king: 20000,
 };
 
+/* =========================
+   POSITION TABLES
+========================= */
 const POSITION_TABLES: Record<string, number[]> = {
   pawn: [
-    0,  0,  0,  0,  0,  0,  0,  0,
-    50, 50, 50, 50, 50, 50, 50, 50,
+    0, 0, 0, 0, 0, 0, 0,
+    50, 50, 50, 50, 50, 50, 50,
     10, 10, 20, 30, 30, 20, 10, 10,
-    5,  5, 10, 25, 25, 10,  5,  5,
-    0,  0,  0, 20, 20,  0,  0,  0,
-    5, -5,-10,  0,  0,-10, -5,  5,
-    5, 10, 10,-20,-20, 10, 10,  5,
-    0,  0,  0,  0,  0,  0,  0,  0,
+    5, 5, 10, 25, 25, 10, 5, 5,
+    0, 0, 0, 20, 20, 0, 0, 0,
+    5, -5, -10, 0, 0, -10, -5, 5,
+    20, 5, 10, -20, -20, 10, 10, 5,
+    0, 0, 0, 0, 0, 0, 0, 0,
   ],
   knight: [
-    -50,-40,-30,-30,-30,-30,-40,-50,
-    -40,-20,  0,  0,  0,  0,-20,-40,
-    -30,  0, 10, 15, 15, 10,  0,-30,
-    -30,  5, 15, 20, 20, 15,  5,-30,
-    -30,  0, 15, 20, 20, 15,  0,-30,
-    -30,  5, 10, 15, 15, 10,  5,-30,
-    -40,-20,  0,  5,  5,  0,-20,-40,
-    -50,-40,-30,-30,-30,-30,-40,-50,
+    -50, -40, -30, -30, -30, -30, -40, -50,
+    -40, -20, 0, 0, 0, 0, -20, -40,
+    -30, 0, 10, 15, 15, 10, 0, -30,
+    -30, 5, 15, 20, 20, 15, 5, -30,
+    -30, 0, 15, 20, 20, 15, 0, -30,
+    -30, 5, 10, 15, 10, 5, -30,
+    -40, -20, 0, 5, 5, 0, -20, -40,
+    -50, -40, -30, -30, -30, -30, -40, -50,
   ],
   bishop: [
-    -20,-10,-10,-10,-10,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0, 10, 10, 10, 10,  0,-10,
-    -10,  5,  5, 10, 10,  5,  5,-10,
-    -10,  0,  5, 10, 10,  5,  0,-10,
-    -10, 10, 10, 10, 10, 10, 10,-10,
-    -10,  5,  0,  0,  0,  0,  5,-10,
-    -20,-10,-10,-10,-10,-10,-10,-20,
+    -20, -10, -10, -10, -10, -10, -10, -20,
+    -10, 0, 0, 0, 0, 0, 0, -10,
+    -10, 0, 10, 10, 10, 10, 0, -10,
+    -10, 5, 5, 10, 10, 5, 5, -10,
+    -10, 0, 5, 10, 10, 5, 0, -10,
+    -10, 10, 10, 10, 10, 10, 10, -10,
+    -10, 5, 0, 0, 0, 0, 5, -10,
+    -20, -10, -10, -10, -10, -10, -10, -20,
   ],
   rook: [
-    0,  0,  0,  0,  0,  0,  0,  0,
-    5, 10, 10, 10, 10, 10, 10,  5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    -5,  0,  0,  0,  0,  0,  0, -5,
-    0,  0,  0,  5,  5,  0,  0,  0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    5, 10, 10, 10, 10, 10, 10, 5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    -5, 0, 0, 0, 0, 0, 0, -5,
+    0, 0, 0, 5, 5, 0, 0, 0,
   ],
   queen: [
-    -20,-10,-10, -5, -5,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5,  5,  5,  5,  0,-10,
-    -5,  0,  5,  5,  5,  5,  0, -5,
-    0,  0,  5,  5,  5,  5,  0, -5,
-    -10,  5,  5,  5,  5,  5,  0,-10,
-    -10,  0,  5,  0,  0,  0,  0,-10,
-    -20,-10,-10, -5, -5,-10,-10,-20,
+    -20, -10, -10, -5, -5, -10, -10, -20,
+    -10, 0, 0, 0, 0, 0, 0, -10,
+    -10, 0, 5, 5, 5, 5, 0, -10,
+    -5, 0, 5, 5, 5, 5, 0, -5,
+    0, 0, 5, 5, 5, 5, 0, -5,
+    -10, 5, 5, 5, 5, 5, 0, -10,
+    -10, 0, 5, 0, 0, 0, 0, -10,
+    -20, -10, -10, -5, -5, -10, -10, -20,
   ],
   king: [
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -20,-30,-30,-40,-40,-30,-30,-20,
-    -10,-20,-20,-20,-20,-20,-20,-10,
-    20, 20,  0,  0,  0,  0, 20, 20,
-    20, 30, 10,  0,  0, 10, 30, 20,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30,
+    -20, -30, -30, -40, -40, -30, -30, -20,
+    -10, -20, -20, -20, -20, -20, -20, -10,
+    20, 20, 0, 0, 0, 20, 20,
+    20, 30, 10, 0, 0, 10, 30, 20,
   ],
 };
 
+/* =========================
+   HEURISTICS MEMORY
+========================= */
+const TT = new Map<string, { depth: number; value: number }>();
+const KILLERS: Record<number, string[]> = {};
+
+/* =========================
+   POSITION BONUS
+========================= */
 function getPositionBonus(pieceType: string, square: string, isWhite: boolean): number {
   const table = POSITION_TABLES[pieceType];
   if (!table) return 0;
@@ -79,9 +94,13 @@ function getPositionBonus(pieceType: string, square: string, isWhite: boolean): 
   const file = square.charCodeAt(0) - 97;
   const rank = parseInt(square[1]) - 1;
   const index = isWhite ? (7 - rank) * 8 + file : rank * 8 + file;
+
   return table[index] || 0;
 }
 
+/* =========================
+   EVALUATION
+========================= */
 export function evaluateBoard(game: Chess): number {
   if (game.isCheckmate()) {
     return game.turn() === 'w' ? -99999 : 99999;
@@ -108,82 +127,165 @@ export function evaluateBoard(game: Chess): number {
   return score;
 }
 
-function orderMoves(moves: Move[]): Move[] {
-  return moves.sort((a, b) => {
-    let scoreA = 0;
-    let scoreB = 0;
-    if (a.captured) scoreA += PIECE_VALUES[a.captured] || 0;
-    if (b.captured) scoreB += PIECE_VALUES[b.captured] || 0;
-    if (a.promotion) scoreA += 800;
-    if (b.promotion) scoreB += 800;
-    if (a.san.includes('+')) scoreA += 50;
-    if (b.san.includes('+')) scoreB += 50;
-    return scoreB - scoreA;
-  });
+/* =========================
+   MOVE ORDERING (STRONG)
+========================= */
+function moveScore(move: Move, depth: number): number {
+  let score = 0;
+
+  if (move.captured) {
+    score += 10000 + (PIECE_VALUES[move.captured] || 0);
+  }
+
+  if (move.promotion) score += 9000;
+  if (move.san.includes('+')) score += 500;
+
+  if (KILLERS[depth]?.includes(move.san)) {
+    score += 8000;
+  }
+
+  return score;
 }
 
+function orderMoves(moves: Move[], depth: number): Move[] {
+  return moves.sort((a, b) => moveScore(b, depth) - moveScore(a, depth));
+}
+
+/* =========================
+   QUIESCENCE SEARCH
+========================= */
+function quiescence(game: Chess, alpha: number, beta: number): number {
+  const stand = evaluateBoard(game);
+
+  if (stand >= beta) return beta;
+  if (stand > alpha) alpha = stand;
+
+  const moves = game.moves({ verbose: true }).filter(m => m.captured);
+
+  for (const move of moves) {
+    game.move(move.san);
+    const score = -quiescence(game, -beta, -alpha);
+    game.undo();
+
+    if (score >= beta) return beta;
+    if (score > alpha) alpha = score;
+  }
+
+  return alpha;
+}
+
+/* =========================
+   MINIMAX (UPGRADED)
+========================= */
 function minimax(
   game: Chess,
   depth: number,
   alpha: number,
   beta: number,
-  isMaximizing: boolean
+  maximizing: boolean
 ): number {
-  if (depth === 0 || game.isGameOver()) {
+  const key = game.fen();
+
+  const cached = TT.get(key);
+  if (cached && cached.depth >= depth) {
+    return cached.value;
+  }
+
+  if (depth === 0) {
+    return quiescence(game, alpha, beta);
+  }
+
+  if (game.isGameOver()) {
     return evaluateBoard(game);
   }
 
-  const moves = orderMoves(game.moves({ verbose: true }));
+  const moves = orderMoves(game.moves({ verbose: true }), depth);
 
-  if (isMaximizing) {
-    let maxEval = -Infinity;
-    for (const move of moves) {
-      game.move(move.san);
-      const evalScore = minimax(game, depth - 1, alpha, beta, false);
-      game.undo();
-      maxEval = Math.max(maxEval, evalScore);
-      alpha = Math.max(alpha, evalScore);
-      if (beta <= alpha) break;
-    }
-    return maxEval;
-  } else {
-    let minEval = Infinity;
-    for (const move of moves) {
-      game.move(move.san);
-      const evalScore = minimax(game, depth - 1, alpha, beta, true);
-      game.undo();
-      minEval = Math.min(minEval, evalScore);
-      beta = Math.min(beta, evalScore);
-      if (beta <= alpha) break;
-    }
-    return minEval;
-  }
-}
-
-export function getBestMove(fen: string, depth: number = 3): Move | null {
-  const game = new Chess(fen);
-  const moves = game.moves({ verbose: true });
-
-  if (moves.length === 0) return null;
-
-  const isWhite = game.turn() === 'w';
-  let bestMove: Move | null = null;
-  let bestValue = isWhite ? -Infinity : Infinity;
+  let best = maximizing ? -Infinity : Infinity;
 
   for (const move of moves) {
     game.move(move.san);
-    const value = minimax(game, depth - 1, -Infinity, Infinity, !isWhite);
+
+    const val = minimax(game, depth - 1, alpha, beta, !maximizing);
+
     game.undo();
 
-    if (isWhite ? value > bestValue : value < bestValue) {
-      bestValue = value;
-      bestMove = move;
+    if (maximizing) {
+      best = Math.max(best, val);
+      alpha = Math.max(alpha, val);
+    } else {
+      best = Math.min(best, val);
+      beta = Math.min(beta, val);
+    }
+
+    if (beta <= alpha) {
+      if (!KILLERS[depth]) KILLERS[depth] = [];
+      KILLERS[depth].push(move.san);
+      break;
+    }
+  }
+
+  TT.set(key, { depth, value: best });
+
+  return best;
+}
+
+/* =========================
+   ITERATIVE DEEPENING
+========================= */
+export function getLegalMoves(fen: string, from: string): string[] {
+  try {
+    const game = new Chess(fen);
+    const moves = game.moves({ square: from as Square, verbose: true });
+    return moves.map(m => m.to);
+  } catch {
+    return [];
+  }
+}
+
+export function isValidMove(fen: string, from: string, to: string, promotion?: string): boolean {
+  try {
+    const game = new Chess(fen);
+    const move = game.move({ from: from as Square, to: to as Square, promotion: promotion as 'q' | 'r' | 'b' | 'n' | undefined });
+    return !!move;
+  } catch {
+    return false;
+  }
+}
+
+export function getBestMove(fen: string, maxDepth = 5): Move | null {
+  const game = new Chess(fen);
+  const moves = game.moves({ verbose: true });
+
+  if (!moves.length) return null;
+
+  const white = game.turn() === 'w';
+  let bestMove: Move | null = null;
+  let bestValue = white ? -Infinity : Infinity;
+
+  for (let depth = 1; depth <= maxDepth; depth++) {
+    let bestVal = white ? -Infinity : Infinity;
+
+    for (const move of moves) {
+      game.move(move.san);
+
+      const val = minimax(game, depth - 1, -Infinity, Infinity, !white);
+
+      game.undo();
+
+      if (white ? val > bestVal : val < bestVal) {
+        bestVal = val;
+        bestMove = move;
+      }
     }
   }
 
   return bestMove;
 }
 
+/* =========================
+   UTILITIES (UNCHANGED)
+========================= */
 const TYPE_MAP: Record<string, string> = {
   p: 'pawn', n: 'knight', b: 'bishop', r: 'rook', q: 'queen', k: 'king',
 };
@@ -191,6 +293,7 @@ const TYPE_MAP: Record<string, string> = {
 export function fenToBoardPosition(fen: string): Record<string, { piece: { type: string; color: string } | null }> {
   const game = new Chess(fen);
   const board = game.board();
+
   const position: Record<string, { piece: { type: string; color: string } | null }> = {};
 
   for (let r = 0; r < 8; r++) {
@@ -206,40 +309,10 @@ export function fenToBoardPosition(fen: string): Record<string, { piece: { type:
   return position;
 }
 
-export function isValidMove(fen: string, from: string, to: string, promotion?: string): boolean {
-  try {
-    const game = new Chess(fen);
-    const move = game.move({ from: from as Square, to: to as Square, promotion: promotion as 'q' | 'r' | 'b' | 'n' | undefined });
-    return !!move;
-  } catch {
-    return false;
-  }
-}
-
-export function getLegalMoves(fen: string, from: string): string[] {
-  try {
-    const game = new Chess(fen);
-    const moves = game.moves({ square: from as Square, verbose: true });
-    return moves.map(m => m.to);
-  } catch {
-    return [];
-  }
-}
-
-export function makeMove(fen: string, from: string, to: string, promotion?: string): string | null {
-  try {
-    const game = new Chess(fen);
-    const move = game.move({ from: from as Square, to: to as Square, promotion: promotion as 'q' | 'r' | 'b' | 'n' | undefined });
-    return move ? game.fen() : null;
-  } catch {
-    return null;
-  }
-}
-
 export function getGameStatus(fen: string): { isOver: boolean; result: string } {
   const game = new Chess(fen);
   if (game.isCheckmate()) {
-    return { isOver: true, result: game.turn() === 'w' ? 'Black wins by checkmate!' : 'White wins by checkmate!' };
+    return { isOver: true, result: game.turn() === 'w' ? 'Black wins' : 'White wins' };
   }
   if (game.isStalemate()) return { isOver: true, result: 'Draw by stalemate!' };
   if (game.isThreefoldRepetition()) return { isOver: true, result: 'Draw by threefold repetition!' };

@@ -8,12 +8,14 @@ import {
   getLegalMoves,
   getTurnFromFen,
   isInCheck,
+  getBestMove,
 } from '../chessBot';
 import { RotateCcw, ArrowLeft, Bot, User, Crown } from 'lucide-react';
 import { ChessPiece } from '../types/chess';
 
 interface BotGameProps {
   playerColor: 'white' | 'black';
+  botDifficulty: 'easy' | 'medium' | 'hard';
   onBack: () => void;
 }
 
@@ -24,7 +26,7 @@ interface MoveRecord {
   color: 'white' | 'black';
 }
 
-export function BotGame({ playerColor, onBack }: BotGameProps) {
+export function BotGame({ playerColor, botDifficulty, onBack }: BotGameProps) {
   const [fen, setFen] = useState(INITIAL_FEN);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [legalMoves, setLegalMoves] = useState<string[]>([]);
@@ -69,52 +71,57 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
     isThinkingRef.current = true;
     setIsThinking(true);
 
-    // Use a very simple approach: pick a random move from the top 3 evaluated moves
-    // This avoids the minimax blocking the main thread
     setTimeout(() => {
       try {
-        const moves = gameRef.current.moves({ verbose: true });
-        if (moves.length === 0) {
-          isThinkingRef.current = false;
-          setIsThinking(false);
-          return;
-        }
-
-        // Simple evaluation: score each move by immediate capture value + basic positional bonus
-        const scored = moves.map((m: Move) => {
-          let score = 0;
-          if (m.captured) {
-            const vals: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900 };
-            score += vals[m.captured] || 0;
+        if (botDifficulty === 'easy') {
+          // Easy bot: simple evaluation with some randomness
+          const moves = gameRef.current.moves({ verbose: true });
+          if (moves.length === 0) {
+            isThinkingRef.current = false;
+            setIsThinking(false);
+            return;
           }
-          if (m.promotion) score += 800;
-          if (m.san.includes('+')) score += 50;
-          if (m.san.includes('#')) score += 99999;
-          // Prefer center moves
-          const centerFiles = ['d', 'e'];
-          const centerRanks = ['4', '5'];
-          if (centerFiles.includes(m.to[0]) && centerRanks.includes(m.to[1])) score += 20;
-          // Add a small random factor so it doesn't play the same every time
-          score += Math.random() * 30;
-          return { move: m, score };
-        });
 
-        scored.sort((a, b) => b.score - a.score);
+          const scored = moves.map((m: Move) => {
+            let score = 0;
+            if (m.captured) {
+              const vals: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900 };
+              score += vals[m.captured] || 0;
+            }
+            if (m.promotion) score += 800;
+            if (m.san.includes('+')) score += 50;
+            if (m.san.includes('#')) score += 99999;
+            const centerFiles = ['d', 'e'];
+            const centerRanks = ['4', '5'];
+            if (centerFiles.includes(m.to[0]) && centerRanks.includes(m.to[1])) score += 20;
+            score += Math.random() * 30;
+            return { move: m, score };
+          });
 
-        // Pick from top 3 moves with weighted random
-        const topN = scored.slice(0, Math.min(3, scored.length));
-        const pick = topN[Math.floor(Math.random() * topN.length)];
-        const chosenMove = pick.move;
+          scored.sort((a, b) => b.score - a.score);
+          const topN = scored.slice(0, Math.min(3, scored.length));
+          const pick = topN[Math.floor(Math.random() * topN.length)];
+          const chosenMove = pick.move;
 
-        gameRef.current.move(chosenMove);
-        applyMove(chosenMove, botColor);
+          gameRef.current.move(chosenMove);
+          applyMove(chosenMove, botColor);
+        } else {
+          // Medium/Hard bot: use minimax with different depths
+          const depth = botDifficulty === 'medium' ? 2 : 3;
+          const bestMove = getBestMove(gameRef.current.fen(), depth);
+          
+          if (bestMove) {
+            gameRef.current.move(bestMove.san);
+            applyMove(bestMove, botColor);
+          }
+        }
       } catch {
         // If anything goes wrong, just skip
       }
       isThinkingRef.current = false;
       setIsThinking(false);
-    }, 300);
-  }, [playerColor, botColor, applyMove]);
+    }, botDifficulty === 'easy' ? 300 : 500);
+  }, [playerColor, botColor, botDifficulty, applyMove]);
 
   useEffect(() => {
     if (!isPlayerTurn && !gameOverRef.current && !isThinkingRef.current) {
@@ -320,6 +327,13 @@ export function BotGame({ playerColor, onBack }: BotGameProps) {
               botColor === 'white' ? 'bg-gray-200 text-gray-700' : 'bg-gray-800 text-white'
             }`}>
               {botColor}
+            </span>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+              botDifficulty === 'easy' ? 'bg-green-100 text-green-700' :
+              botDifficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+              'bg-red-100 text-red-700'
+            }`}>
+              {botDifficulty}
             </span>
             {isThinking && <span className="ml-auto text-xs text-blue-600 animate-pulse">thinking...</span>}
           </div>
